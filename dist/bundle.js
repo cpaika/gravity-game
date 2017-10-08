@@ -85,8 +85,15 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 var lastTime;
 var currentTime;
 var currentTick = 0;
-var backgroundColor = "black";
+
+// Using palletron: http://paletton.com/#uid=13p0u0krmDVgKNDmfI4B9zMASoZ
+var backgroundColor = "#2196BA";
+var planetColor = "#6BBCD7";
+var lineColor = "#0582AB";
+var textColor = "black";
+var pointerColor = "045E7C";
 var gConstant = 5;
+var speedLimit = 30;
 
 function getMouseLocation(canvas, event) {
   var rect = canvas.getBoundingClientRect();
@@ -101,6 +108,7 @@ var Body = function () {
     this.velocity = velocity;
     this.mass = 10;
     this.id = Math.random();
+    this.radius = 10;
   }
 
   _createClass(Body, [{
@@ -143,10 +151,10 @@ var Body = function () {
         }
       }
 
-      if (this.velocity.length() > 15) {
+      if (this.velocity.length() > speedLimit) {
         this.velocity.normalize();
-        this.velocity.x = this.velocity.x * 15;
-        this.velocity.y = this.velocity.y * 15;
+        this.velocity.x = this.velocity.x * speedLimit;
+        this.velocity.y = this.velocity.y * speedLimit;
       }
     }
   }, {
@@ -158,11 +166,11 @@ var Body = function () {
     key: 'draw',
     value: function draw(ctx) {
       ctx.beginPath();
-      ctx.arc(Math.round(this.location.x), Math.round(this.location.y), 10, 0, 2 * Math.PI, false);
-      ctx.fillStyle = 'blue';
+      ctx.arc(Math.round(this.location.x), Math.round(this.location.y), this.radius, 0, 2 * Math.PI, false);
+      ctx.fillStyle = planetColor;
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#003300';
+      ctx.strokeStyle = lineColor;
       ctx.stroke();
     }
   }]);
@@ -188,6 +196,7 @@ function getContext() {
 function clearScreen(ctx) {
   ctx.canvas.width = window.innerWidth;
   ctx.canvas.height = window.innerHeight;
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
@@ -200,18 +209,26 @@ function drawCursor(ctx) {
   if (mousePressed && mouseMoving) {
     ctx.beginPath();
     ctx.arc(Math.round(mousePressedLocation.x), Math.round(mousePressedLocation.y), 10, 0, 2 * Math.PI, false);
-    ctx.fillStyle = 'blue';
+    ctx.fillStyle = planetColor;
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#003300';
+    ctx.strokeStyle = lineColor;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.strokeStyle = 'red';
+    ctx.strokeStyle = pointerColor;
     ctx.moveTo(mousePressedLocation.x, mousePressedLocation.y);
     ctx.lineTo(currentMouseLocation.x, currentMouseLocation.y);
     ctx.stroke();
   }
+}
+
+function drawInstructions() {
+  var ctx = getContext();
+  ctx.fillStyle = textColor;
+  ctx.textAlign = "center";
+  ctx.font = '40px serif';
+  ctx.fillText('Welcome! Click and drag to add more planets', ctx.canvas.width / 2, ctx.canvas.height / 15);
 }
 
 function createOrbitingBody(location, centerBody) {
@@ -232,6 +249,7 @@ function setupBoard() {
   var middleOfCanvas = new _victor2.default(ctx.canvas.width / 2, ctx.canvas.height / 2);
   var root = new Body(middleOfCanvas, new _victor2.default(0, 0));
   root.mass = 100;
+  root.radius = 25;
   //making it so the center planet doesnt move
   root.updateLocation = function () {};
   bodies.push(root);
@@ -252,6 +270,9 @@ var runGame = function runGame() {
   var fps = getFramesPerSecond();
   if (currentTick % 60 == 0) {
     console.log("FPS: " + fps);
+  }
+  if (currentTick < 400) {
+    drawInstructions();
   }
 
   // Dreaded O(n^2) to calculate the effects of each body on each other
