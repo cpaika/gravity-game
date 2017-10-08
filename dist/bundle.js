@@ -86,21 +86,26 @@ var lastTime;
 var currentTime;
 var currentTick = 0;
 var backgroundColor = "black";
-var gConstant = 10;
+var gConstant = 5;
+
+function getMouseLocation(canvas, event) {
+  var rect = canvas.getBoundingClientRect();
+  return new _victor2.default(event.clientX - rect.left, event.clientY - rect.top);
+}
 
 var Body = function () {
-  function Body(x, y, dx, dy) {
+  function Body(location, velocity) {
     _classCallCheck(this, Body);
 
-    this.location = new _victor2.default(x, y);
-    this.velocity = new _victor2.default(dx, dy);
+    this.location = location;
+    this.velocity = velocity;
     this.mass = 10;
     this.id = Math.random();
   }
 
   _createClass(Body, [{
-    key: 'update',
-    value: function update(bodies) {
+    key: 'updateVelocity',
+    value: function updateVelocity(bodies) {
       var self = this;
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
@@ -143,8 +148,10 @@ var Body = function () {
         this.velocity.x = this.velocity.x * 15;
         this.velocity.y = this.velocity.y * 15;
       }
-
-      //finally change the actual location
+    }
+  }, {
+    key: 'updateLocation',
+    value: function updateLocation() {
       this.location.subtract(this.velocity);
     }
   }, {
@@ -189,6 +196,54 @@ function initialize() {
   clearScreen(ctx);
 }
 
+function drawCursor(ctx) {
+  if (mousePressed && mouseMoving) {
+    ctx.beginPath();
+    ctx.arc(Math.round(mousePressedLocation.x), Math.round(mousePressedLocation.y), 10, 0, 2 * Math.PI, false);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#003300';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'red';
+    ctx.moveTo(mousePressedLocation.x, mousePressedLocation.y);
+    ctx.lineTo(currentMouseLocation.x, currentMouseLocation.y);
+    ctx.stroke();
+  }
+}
+
+function createOrbitingBody(location, centerBody) {
+  var difference = location.clone();
+  difference.subtract(centerBody.location);
+  var velocityMagnitude = Math.sqrt(gConstant * centerBody.mass / difference.length());
+  difference.normalize();
+  difference.rotateDeg(90);
+  difference.x = difference.x * velocityMagnitude;
+  difference.y = difference.y * velocityMagnitude;
+
+  return new Body(location, difference);
+}
+
+function setupBoard() {
+  var ctx = getContext();
+  var bodies = [];
+  var middleOfCanvas = new _victor2.default(ctx.canvas.width / 2, ctx.canvas.height / 2);
+  var root = new Body(middleOfCanvas, new _victor2.default(0, 0));
+  root.mass = 100;
+  //making it so the center planet doesnt move
+  root.updateLocation = function () {};
+  bodies.push(root);
+
+  // bodies.push(new Body(new Victor(400,100), new Victor(-2,0)));
+  // bodies.push(new Body(new Victor(500,200), new Victor(5,0)));
+
+  bodies.push(createOrbitingBody(new _victor2.default(50, 500), root));
+  //bodies.push(createOrbitingBody(new Victor(200,200), root));
+  return bodies;
+}
+
 var runGame = function runGame() {
   var ctx = getContext();
   clearScreen(ctx);
@@ -209,9 +264,9 @@ var runGame = function runGame() {
     for (var _iterator2 = bodies[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
       var body = _step2.value;
 
-      body.update(bodies);
-      body.draw(ctx);
+      body.updateVelocity(bodies);
     }
+    // Need to update the location after each has their velocities updated
   } catch (err) {
     _didIteratorError2 = true;
     _iteratorError2 = err;
@@ -226,13 +281,74 @@ var runGame = function runGame() {
       }
     }
   }
+
+  var _iteratorNormalCompletion3 = true;
+  var _didIteratorError3 = false;
+  var _iteratorError3 = undefined;
+
+  try {
+    for (var _iterator3 = bodies[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+      var body = _step3.value;
+
+      body.updateLocation();
+      body.draw(ctx);
+    }
+  } catch (err) {
+    _didIteratorError3 = true;
+    _iteratorError3 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion3 && _iterator3.return) {
+        _iterator3.return();
+      }
+    } finally {
+      if (_didIteratorError3) {
+        throw _iteratorError3;
+      }
+    }
+  }
+
+  drawCursor(ctx);
 };
 
 initialize();
-var bodies = [];
-bodies.push(new Body(400, 100, -2, 0));
-bodies.push(new Body(500, 200, 5, 0));
+var bodies = setupBoard();
 window.setInterval(runGame, "17");
+
+var canvas = document.getElementById('mainCanvas');
+var context = canvas.getContext('2d');
+
+var mousePressed = false;
+var mousePressedLocation;
+var mouseMoving = false;
+var currentMouseLocation;
+
+canvas.addEventListener("mousedown", function (event) {
+  mousePressed = true;
+  mousePressedLocation = getMouseLocation(canvas, event);
+}, false);
+
+canvas.addEventListener("mousemove", function (event) {
+  mouseMoving = true;
+  currentMouseLocation = getMouseLocation(canvas, event);
+}, false);
+
+canvas.addEventListener('mouseup', function (event) {
+
+  if (mousePressed && mouseMoving == false) {
+    //click
+    // todo when theres a center make a perfect orbit
+  } else if (mouseMoving) {
+    // if they were clicking and dragging
+    var mouseUpLocation = getMouseLocation(canvas, event);
+    var velocity = mousePressedLocation.clone();
+    velocity.subtract(mouseUpLocation);
+    velocity.x = velocity.x / 50;
+    velocity.y = velocity.y / 50;
+    bodies.push(new Body(mousePressedLocation, velocity));
+  }
+  mousePressed = false;
+}, false);
 
 /***/ }),
 /* 1 */
